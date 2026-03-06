@@ -2,37 +2,55 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>綠幕美拍大師 - jQuery版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>綠幕美拍大師 - 專業版</title>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* 移除 .mirror 類別，因為工作人員拍照不需要鏡像 */
-        .bg-grid { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
+        :root { --app-height: 100%; }
+        html, body { 
+            height: 100%; 
+            margin: 0; 
+            padding: 0; 
+            overflow-x: hidden;
+            background-color: #18181b;
+        }
+        /* 鏡像翻轉樣式 */
+        .mirror-view { transform: scaleX(-1); }
+        
+        .bg-grid { 
+            background-image: radial-gradient(#333 1px, transparent 1px); 
+            background-size: 20px 20px; 
+        }
+        
+        /* 自定義捲軸 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #18181b; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+
         input[type='range']::-webkit-slider-thumb {
             -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
             background: #22c55e;
             border-radius: 50%;
             cursor: pointer;
-            border: 2px solid white;
+            border: 3px solid white;
         }
     </style>
 </head>
-<body class="bg-zinc-900 text-white font-sans min-h-screen flex flex-col overflow-hidden">
+<body class="text-white font-sans flex flex-col">
 
     <!-- 標題列 -->
-    <header class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 z-10">
+    <header class="p-3 md:p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 shrink-0 sticky top-0 z-20">
         <div class="flex items-center gap-2">
             <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-black">
-                <i data-lucide="camera" size="20"></i>
+                <i data-lucide="camera" class="w-5 h-5"></i>
             </div>
-            <h1 class="text-lg font-bold tracking-tight">綠幕美拍大師 <span class="text-xs font-normal text-zinc-500 ml-2">v2.1 jQuery</span></h1>
+            <h1 class="text-base md:text-lg font-bold tracking-tight">綠幕美拍大師 <span class="hidden sm:inline text-xs font-normal text-zinc-500 ml-2">v3.0 RWD</span></h1>
         </div>
-        <div id="status-indicator" class="flex items-center gap-2 text-xs text-green-500">
+        <div id="status-indicator" class="flex items-center gap-2 text-[10px] md:text-xs text-green-500">
             <span class="relative flex h-2 w-2">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -41,54 +59,60 @@
         </div>
     </header>
 
-    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
-        <!-- 左側：預覽區 -->
-        <div class="flex-[3] bg-black relative flex items-center justify-center p-4 bg-grid">
+    <main class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+        <!-- 左側/上方：預覽區 -->
+        <div class="relative flex-[2] lg:flex-[3] bg-black bg-grid flex items-center justify-center min-h-[40vh] md:min-h-0">
             
             <!-- 相機畫面 -->
-            <div id="step-camera" class="relative w-full h-full flex items-center justify-center overflow-hidden rounded-2xl shadow-2xl border border-zinc-800">
-                <!-- 移除 mirror 類別 -->
-                <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
-                <div class="absolute inset-0 border-2 border-white/10 pointer-events-none rounded-2xl"></div>
+            <div id="step-camera" class="relative w-full h-full flex items-center justify-center">
+                <video id="video" autoplay playsinline class="w-full h-full object-contain"></video>
+                <!-- 覆蓋層：導引框 -->
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div class="w-64 h-80 border-2 border-dashed border-green-400/30 rounded-full"></div>
+                    <div class="w-1/2 h-2/3 border-2 border-dashed border-green-500/30 rounded-[50px]"></div>
                 </div>
+                <!-- 輔助按鈕：水平翻轉切換 -->
+                <button id="btn-toggle-mirror" class="absolute bottom-4 left-4 bg-black/50 backdrop-blur-md p-2 rounded-lg border border-white/20 text-xs flex items-center gap-2">
+                    <i data-lucide="flip-horizontal" class="w-4 h-4"></i> 水平翻轉
+                </button>
             </div>
 
             <!-- 編輯畫面 (Canvas) -->
-            <div id="step-editor" class="hidden relative w-full h-full flex items-center justify-center p-4">
-                <canvas id="mainCanvas" class="max-w-full max-h-full shadow-2xl rounded-lg bg-zinc-800"></canvas>
+            <div id="step-editor" class="hidden relative w-full h-full flex items-center justify-center p-2">
+                <canvas id="mainCanvas" class="max-w-full max-h-full shadow-2xl rounded-lg bg-zinc-800 object-contain"></canvas>
             </div>
         </div>
 
-        <!-- 右側：控制區 -->
-        <div class="flex-1 bg-zinc-900 border-l border-zinc-800 p-6 flex flex-col gap-6 overflow-y-auto">
+        <!-- 右側/下方：控制區 -->
+        <div class="flex-1 bg-zinc-900 border-t md:border-t-0 md:border-l border-zinc-800 flex flex-col overflow-y-auto">
             
-            <!-- 相機控制 -->
-            <div id="controls-camera" class="flex flex-col h-full justify-center gap-8 text-center">
-                <div>
-                    <h2 class="text-xl font-semibold mb-2 text-green-400">遊客就位</h2>
-                    <p class="text-zinc-400 text-sm leading-relaxed">請工作人員確認畫面<br>確保遊客完全進入導引框內</p>
+            <!-- 相機控制面版 -->
+            <div id="controls-camera" class="p-6 flex flex-col items-center justify-center gap-6 h-full min-h-[300px]">
+                <div class="text-center">
+                    <h2 class="text-lg font-semibold mb-1 text-green-400">遊客就位拍攝</h2>
+                    <p class="text-zinc-400 text-xs">請確保遊客在綠幕前方，且環境光線充足</p>
                 </div>
-                <button id="btn-capture" class="mx-auto w-24 h-24 bg-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl border-8 border-zinc-700">
-                    <div class="w-16 h-16 bg-red-500 rounded-full"></div>
+                
+                <button id="btn-capture" class="group relative w-20 h-20 md:w-24 md:h-24 bg-white rounded-full flex items-center justify-center shadow-xl border-4 md:border-8 border-zinc-700 active:scale-90 transition-transform">
+                    <div class="w-14 h-14 md:w-16 md:h-16 bg-red-500 rounded-full group-hover:bg-red-600 transition-colors"></div>
                 </button>
-                <div class="flex justify-center gap-4">
-                    <button id="btn-switch-cam" class="p-4 bg-zinc-800 rounded-full hover:bg-zinc-700 text-zinc-300">
-                        <i data-lucide="refresh-cw"></i>
+                
+                <div class="flex gap-4">
+                    <button id="btn-switch-cam" class="flex flex-col items-center gap-1 p-3 bg-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-colors">
+                        <i data-lucide="refresh-ccw" class="w-5 h-5"></i>
+                        <span class="text-[10px]">切換鏡頭</span>
                     </button>
                 </div>
             </div>
 
-            <!-- 編輯控制 -->
-            <div id="controls-editor" class="hidden flex flex-col gap-6">
+            <!-- 編輯控制面版 -->
+            <div id="controls-editor" class="hidden p-4 md:p-6 space-y-6 pb-20 md:pb-6">
                 <section>
                     <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3 flex items-center gap-2">
-                        <i data-lucide="maximize" class="w-4 h-4"></i> 照片比例
+                        <i data-lucide="maximize-2" class="w-4 h-4"></i> 調整照片比例
                     </h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        <button data-ratio="1:1" class="ratio-btn py-3 rounded-lg border-2 border-zinc-800 bg-zinc-800/50 text-zinc-400 transition-all">1 : 1</button>
-                        <button data-ratio="4:3" class="ratio-btn py-3 rounded-lg border-2 border-green-500 bg-green-500/10 text-white transition-all">4 : 3</button>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <button data-ratio="1:1" class="ratio-btn py-3 rounded-xl border-2 border-zinc-800 bg-zinc-800/50 text-zinc-400">1 : 1</button>
+                        <button data-ratio="4:3" class="ratio-btn py-3 rounded-xl border-2 border-green-500 bg-green-500/10 text-white font-bold">4 : 3</button>
                     </div>
                 </section>
 
@@ -96,28 +120,28 @@
                     <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3 flex items-center gap-2">
                         <i data-lucide="image" class="w-4 h-4"></i> 選擇背景
                     </h3>
-                    <div id="bg-list" class="grid grid-cols-2 gap-3">
-                        <!-- 背景將由 JS 生成 -->
+                    <div id="bg-list" class="grid grid-cols-2 gap-2">
+                        <!-- 由 JS 生成 -->
                     </div>
                 </section>
 
                 <section>
                     <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3 flex items-center gap-2">
-                        <i data-lucide="layers" class="w-4 h-4"></i> 去背靈敏度
+                        <i data-lucide="wand-2" class="w-4 h-4"></i> 去背靈敏度微調
                     </h3>
-                    <div class="space-y-4 bg-zinc-800/40 p-4 rounded-xl border border-zinc-800">
-                        <div class="flex justify-between text-[10px] text-zinc-400 mb-1">
-                            <span>低</span>
-                            <span id="similarity-val" class="text-green-400 font-bold">80</span>
-                            <span>高</span>
+                    <div class="bg-zinc-800/50 p-4 rounded-xl border border-zinc-700/50">
+                        <div class="flex justify-between text-[10px] text-zinc-500 mb-2">
+                            <span>寬鬆</span>
+                            <span id="similarity-val" class="text-green-400 font-bold">85</span>
+                            <span>嚴格</span>
                         </div>
-                        <input id="range-similarity" type="range" min="30" max="180" value="80" class="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none">
+                        <input id="range-similarity" type="range" min="30" max="180" value="85" class="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
                     </div>
                 </section>
 
-                <div class="mt-4 flex flex-col gap-3">
-                    <button id="btn-download" class="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95">
-                        <i data-lucide="download"></i> 完成並下載圖片
+                <div class="grid grid-cols-1 gap-3 pt-2">
+                    <button id="btn-download" class="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+                        <i data-lucide="download"></i> 儲存並產出照片
                     </button>
                     <button id="btn-retake" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 rounded-xl transition-colors">
                         重新拍攝
@@ -127,91 +151,107 @@
         </div>
     </main>
 
-    <!-- 隱藏的工具畫布 -->
+    <!-- 輔助畫布 -->
     <canvas id="tempCanvas" class="hidden"></canvas>
 
     <script>
         const BACKGROUNDS = [
-            { id: 1, name: '簡約室內', url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80' },
-            { id: 2, name: '熱帶海灘', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80' },
-            { id: 3, name: '科技城市', url: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=800&q=80' },
-            { id: 4, name: '森林秘境', url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80' },
+            { id: 1, name: '極簡辦公室', url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80' },
+            { id: 2, name: '渡假海灘', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80' },
+            { id: 3, name: '未來城市', url: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=800&q=80' },
+            { id: 4, name: '神祕森林', url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80' },
         ];
 
-        let currentStep = 'camera';
-        let currentRatio = '4:3';
-        let currentBgIdx = 0;
-        let capturedImgData = null;
-        let videoStream = null;
-        let similarity = 80;
+        let state = {
+            step: 'camera',
+            ratio: '4:3',
+            bgIdx: 0,
+            capturedBlob: null,
+            isMirrored: false,
+            similarity: 85,
+            videoStream: null
+        };
 
         $(document).ready(function() {
             lucide.createIcons();
-            initBackgrounds();
+            initUI();
             startCamera();
 
+            // 鏡像切換按鈕
+            $('#btn-toggle-mirror').on('click', function() {
+                state.isMirrored = !state.isMirrored;
+                $('#video').toggleClass('mirror-view', state.isMirrored);
+                $(this).toggleClass('bg-green-500 text-black', state.isMirrored);
+            });
+
+            // 拍攝
             $('#btn-capture').on('click', takePhoto);
 
+            // 比例切換
             $('.ratio-btn').on('click', function() {
-                $('.ratio-btn').removeClass('border-green-500 bg-green-500/10 text-white').addClass('border-zinc-800 bg-zinc-800/50 text-zinc-400');
-                $(this).addClass('border-green-500 bg-green-500/10 text-white').removeClass('border-zinc-800 bg-zinc-800/50 text-zinc-400');
-                currentRatio = $(this).data('ratio');
+                state.ratio = $(this).data('ratio');
+                $('.ratio-btn').removeClass('border-green-500 bg-green-500/10 text-white font-bold').addClass('border-zinc-800 bg-zinc-800/50 text-zinc-400 font-normal');
+                $(this).addClass('border-green-500 bg-green-500/10 text-white font-bold').removeClass('border-zinc-800 bg-zinc-800/50 text-zinc-400 font-normal');
                 renderComposite();
             });
 
+            // 去背滑桿
             $('#range-similarity').on('input', function() {
-                similarity = parseInt($(this).val());
-                $('#similarity-val').text(similarity);
+                state.similarity = parseInt($(this).val());
+                $('#similarity-val').text(state.similarity);
                 renderComposite();
             });
 
-            $('#btn-download').on('click', downloadPhoto);
-
+            // 下載與重拍
+            $('#btn-download').on('click', savePhoto);
             $('#btn-retake').on('click', () => {
                 switchStep('camera');
                 startCamera();
             });
+
+            // 切換鏡頭 (如果支援)
+            $('#btn-switch-cam').on('click', () => {
+                const currentMode = state.facingMode === 'user' ? 'environment' : 'user';
+                startCamera(currentMode);
+            });
         });
 
-        function initBackgrounds() {
-            const container = $('#bg-list');
-            BACKGROUNDS.forEach((bg, index) => {
-                const activeClass = index === 0 ? 'border-green-500 ring-2 ring-green-500/20' : 'border-transparent';
-                const html = `
-                    <button class="bg-item relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${activeClass}" data-idx="${index}">
+        function initUI() {
+            const $list = $('#bg-list');
+            BACKGROUNDS.forEach((bg, i) => {
+                const active = i === 0 ? 'border-green-500 ring-2 ring-green-500/20' : 'border-transparent';
+                $list.append(`
+                    <button class="bg-item relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${active}" data-idx="${i}">
                         <img src="${bg.url}" class="w-full h-full object-cover">
-                        <div class="absolute inset-0 bg-black/40 flex items-end p-2">
-                            <span class="text-[10px] font-medium">${bg.name}</span>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-2">
+                            <span class="text-[10px] truncate">${bg.name}</span>
                         </div>
                     </button>
-                `;
-                container.append(html);
+                `);
             });
 
             $('.bg-item').on('click', function() {
                 $('.bg-item').removeClass('border-green-500 ring-2 ring-green-500/20').addClass('border-transparent');
-                $(this).addClass('border-green-500 ring-2 ring-green-500/20').removeClass('border-transparent');
-                currentBgIdx = $(this).data('idx');
+                $(this).addClass('border-green-500 ring-2 ring-green-500/20');
+                state.bgIdx = $(this).data('idx');
                 renderComposite();
             });
         }
 
-        async function startCamera() {
+        async function startCamera(mode = 'environment') {
+            if (state.videoStream) {
+                state.videoStream.getTracks().forEach(t => t.stop());
+            }
             try {
-                // 優先使用後置鏡頭
-                videoStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                state.facingMode = mode;
+                state.videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: mode, width: { ideal: 1920 }, height: { ideal: 1080 } },
                     audio: false
                 });
-                $('#video')[0].srcObject = videoStream;
+                $('#video')[0].srcObject = state.videoStream;
             } catch (err) {
-                alert("無法開啟相機，請檢查權限設定");
-            }
-        }
-
-        function stopCamera() {
-            if (videoStream) {
-                videoStream.getTracks().forEach(track => track.stop());
+                console.error("Camera Error:", err);
+                alert("無法存取相機，請確認瀏覽器權限。");
             }
         }
 
@@ -222,17 +262,21 @@
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
             
-            // 修正：移除翻轉邏輯，直接繪製影片內容
+            // 處理拍照時的鏡像同步
+            if (state.isMirrored) {
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+            }
             ctx.drawImage(video, 0, 0);
             
-            capturedImgData = canvas.toDataURL('image/png');
-            stopCamera();
+            state.capturedBlob = canvas.toDataURL('image/png');
+            state.videoStream.getTracks().forEach(t => t.stop());
             switchStep('editor');
             renderComposite();
         }
 
         function switchStep(step) {
-            currentStep = step;
+            state.step = step;
             if (step === 'camera') {
                 $('#step-camera, #controls-camera').show();
                 $('#step-editor, #controls-editor').hide();
@@ -242,26 +286,25 @@
             }
         }
 
+        // 綠幕去背演算法
         function applyChromaKey(ctx, w, h) {
             const imgData = ctx.getImageData(0, 0, w, h);
             const data = imgData.data;
-            const target = { r: 80, g: 190, b: 100 };
+            const target = { r: 80, g: 190, b: 100 }; // 綠幕基準色
 
             for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i + 1];
-                const b = data[i + 2];
-
+                const r = data[i], g = data[i+1], b = data[i+2];
+                // 計算色差 (歐幾里得距離)
                 const diff = Math.sqrt(
-                    Math.pow(r - target.r, 2) +
-                    Math.pow(g - target.g, 2) +
+                    Math.pow(r - target.r, 2) + 
+                    Math.pow(g - target.g, 2) + 
                     Math.pow(b - target.b, 2)
                 );
 
-                if (diff < similarity) {
-                    data[i + 3] = 0;
-                } else if (diff < similarity + 20) {
-                    data[i + 3] = ((diff - similarity) / 20) * 255;
+                if (diff < state.similarity) {
+                    data[i + 3] = 0; // 完全透明
+                } else if (diff < state.similarity + 15) {
+                    data[i + 3] = ((diff - state.similarity) / 15) * 255; // 邊緣羽化
                 }
             }
             ctx.putImageData(imgData, 0, 0);
@@ -270,29 +313,33 @@
         function renderComposite() {
             const canvas = $('#mainCanvas')[0];
             const ctx = canvas.getContext('2d');
-            
             const bgImg = new Image();
             const personImg = new Image();
-            bgImg.crossOrigin = "anonymous";
-            
-            bgImg.onload = () => {
-                const targetW = 1200;
-                const targetH = currentRatio === '1:1' ? 1200 : 900;
-                canvas.width = targetW;
-                canvas.height = targetH;
 
+            bgImg.crossOrigin = "anonymous";
+            bgImg.src = BACKGROUNDS[state.bgIdx].url;
+
+            bgImg.onload = () => {
+                // 設定畫布尺寸 (根據比例)
+                const baseWidth = 1200;
+                const baseHeight = state.ratio === '1:1' ? 1200 : 900;
+                canvas.width = baseWidth;
+                canvas.height = baseHeight;
+
+                // 1. 繪製背景 (Cover 模式)
                 const bgRatio = bgImg.width / bgImg.height;
-                const targetRatio = targetW / targetH;
+                const targetRatio = baseWidth / baseHeight;
                 let bw, bh, bx, by;
                 if (bgRatio > targetRatio) {
-                    bh = targetH; bw = bgImg.width * (targetH / bgImg.height);
-                    bx = (targetW - bw) / 2; by = 0;
+                    bh = baseHeight; bw = bgImg.width * (baseHeight / bgImg.height);
+                    bx = (baseWidth - bw) / 2; by = 0;
                 } else {
-                    bw = targetW; bh = bgImg.height * (targetW / bgImg.width);
-                    bx = 0; by = (targetH - bh) / 2;
+                    bw = baseWidth; bh = bgImg.height * (baseWidth / bgImg.width);
+                    bx = 0; by = (baseHeight - bh) / 2;
                 }
                 ctx.drawImage(bgImg, bx, by, bw, bh);
 
+                // 2. 處理人物去背與合成
                 personImg.onload = () => {
                     const tCanvas = document.createElement('canvas');
                     tCanvas.width = personImg.width;
@@ -301,26 +348,28 @@
                     tCtx.drawImage(personImg, 0, 0);
                     applyChromaKey(tCtx, tCanvas.width, tCanvas.height);
 
+                    // 3. 繪製人物到主畫布 (Contain 模式，並確保人物置中)
                     const pRatio = tCanvas.width / tCanvas.height;
                     let pw, ph, px, py;
                     if (pRatio > targetRatio) {
-                        ph = targetH; pw = tCanvas.width * (targetH / tCanvas.height);
+                        pw = baseWidth; ph = tCanvas.height * (baseWidth / tCanvas.width);
                     } else {
-                        pw = targetW; ph = tCanvas.height * (targetW / tCanvas.width);
+                        ph = baseHeight; pw = tCanvas.width * (baseHeight / tCanvas.height);
                     }
-                    px = (targetW - pw) / 2; py = (targetH - ph) / 2;
+                    px = (baseWidth - pw) / 2;
+                    py = (baseHeight - ph) / 2;
                     ctx.drawImage(tCanvas, px, py, pw, ph);
                 };
-                personImg.src = capturedImgData;
+                personImg.src = state.capturedBlob;
             };
-            bgImg.src = BACKGROUNDS[currentBgIdx].url;
         }
 
-        function downloadPhoto() {
+        function savePhoto() {
             const canvas = $('#mainCanvas')[0];
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
             const link = document.createElement('a');
             link.download = `GreenScreenStudio_${Date.now()}.jpg`;
-            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.href = dataUrl;
             link.click();
         }
     </script>
