@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        .mirror { transform: scaleX(-1); }
+        /* 移除 .mirror 類別，因為工作人員拍照不需要鏡像 */
         .bg-grid { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
         input[type='range']::-webkit-slider-thumb {
             -webkit-appearance: none;
@@ -30,7 +30,7 @@
             <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-black">
                 <i data-lucide="camera" size="20"></i>
             </div>
-            <h1 class="text-lg font-bold tracking-tight">綠幕美拍大師 <span class="text-xs font-normal text-zinc-500 ml-2">v2.0 jQuery</span></h1>
+            <h1 class="text-lg font-bold tracking-tight">綠幕美拍大師 <span class="text-xs font-normal text-zinc-500 ml-2">v2.1 jQuery</span></h1>
         </div>
         <div id="status-indicator" class="flex items-center gap-2 text-xs text-green-500">
             <span class="relative flex h-2 w-2">
@@ -47,7 +47,8 @@
             
             <!-- 相機畫面 -->
             <div id="step-camera" class="relative w-full h-full flex items-center justify-center overflow-hidden rounded-2xl shadow-2xl border border-zinc-800">
-                <video id="video" autoplay playsinline class="w-full h-full object-cover mirror"></video>
+                <!-- 移除 mirror 類別 -->
+                <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
                 <div class="absolute inset-0 border-2 border-white/10 pointer-events-none rounded-2xl"></div>
                 <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div class="w-64 h-80 border-2 border-dashed border-green-400/30 rounded-full"></div>
@@ -67,7 +68,7 @@
             <div id="controls-camera" class="flex flex-col h-full justify-center gap-8 text-center">
                 <div>
                     <h2 class="text-xl font-semibold mb-2 text-green-400">遊客就位</h2>
-                    <p class="text-zinc-400 text-sm leading-relaxed">請確保遊客站在綠幕中心<br>避免穿著綠色衣物</p>
+                    <p class="text-zinc-400 text-sm leading-relaxed">請工作人員確認畫面<br>確保遊客完全進入導引框內</p>
                 </div>
                 <button id="btn-capture" class="mx-auto w-24 h-24 bg-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl border-8 border-zinc-700">
                     <div class="w-16 h-16 bg-red-500 rounded-full"></div>
@@ -106,9 +107,9 @@
                     </h3>
                     <div class="space-y-4 bg-zinc-800/40 p-4 rounded-xl border border-zinc-800">
                         <div class="flex justify-between text-[10px] text-zinc-400 mb-1">
-                            <span>低 (保留較多)</span>
+                            <span>低</span>
                             <span id="similarity-val" class="text-green-400 font-bold">80</span>
-                            <span>高 (去得更乾淨)</span>
+                            <span>高</span>
                         </div>
                         <input id="range-similarity" type="range" min="30" max="180" value="80" class="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none">
                     </div>
@@ -149,10 +150,8 @@
             initBackgrounds();
             startCamera();
 
-            // 拍照按鈕
             $('#btn-capture').on('click', takePhoto);
 
-            // 比例切換
             $('.ratio-btn').on('click', function() {
                 $('.ratio-btn').removeClass('border-green-500 bg-green-500/10 text-white').addClass('border-zinc-800 bg-zinc-800/50 text-zinc-400');
                 $(this).addClass('border-green-500 bg-green-500/10 text-white').removeClass('border-zinc-800 bg-zinc-800/50 text-zinc-400');
@@ -160,17 +159,14 @@
                 renderComposite();
             });
 
-            // 靈敏度調整
             $('#range-similarity').on('input', function() {
                 similarity = parseInt($(this).val());
                 $('#similarity-val').text(similarity);
                 renderComposite();
             });
 
-            // 下載
             $('#btn-download').on('click', downloadPhoto);
 
-            // 重拍
             $('#btn-retake').on('click', () => {
                 switchStep('camera');
                 startCamera();
@@ -202,6 +198,7 @@
 
         async function startCamera() {
             try {
+                // 優先使用後置鏡頭
                 videoStream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
                     audio: false
@@ -225,9 +222,7 @@
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
             
-            // 處理水平翻轉(因為預覽是鏡像)
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
+            // 修正：移除翻轉邏輯，直接繪製影片內容
             ctx.drawImage(video, 0, 0);
             
             capturedImgData = canvas.toDataURL('image/png');
@@ -247,12 +242,9 @@
             }
         }
 
-        // 核心去背演算法
         function applyChromaKey(ctx, w, h) {
             const imgData = ctx.getImageData(0, 0, w, h);
             const data = imgData.data;
-            
-            // 目標綠色 (稍微偏鮮綠)
             const target = { r: 80, g: 190, b: 100 };
 
             for (let i = 0; i < data.length; i += 4) {
@@ -284,13 +276,11 @@
             bgImg.crossOrigin = "anonymous";
             
             bgImg.onload = () => {
-                // 設定畫布尺寸
                 const targetW = 1200;
                 const targetH = currentRatio === '1:1' ? 1200 : 900;
                 canvas.width = targetW;
                 canvas.height = targetH;
 
-                // 1. 繪製背景
                 const bgRatio = bgImg.width / bgImg.height;
                 const targetRatio = targetW / targetH;
                 let bw, bh, bx, by;
@@ -303,7 +293,6 @@
                 }
                 ctx.drawImage(bgImg, bx, by, bw, bh);
 
-                // 2. 處理去背
                 personImg.onload = () => {
                     const tCanvas = document.createElement('canvas');
                     tCanvas.width = personImg.width;
@@ -312,7 +301,6 @@
                     tCtx.drawImage(personImg, 0, 0);
                     applyChromaKey(tCtx, tCanvas.width, tCanvas.height);
 
-                    // 3. 合成人物
                     const pRatio = tCanvas.width / tCanvas.height;
                     let pw, ph, px, py;
                     if (pRatio > targetRatio) {
