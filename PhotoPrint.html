@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>綠幕美拍大師 - jQuery版</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .mirror { transform: scaleX(-1); }
+        .bg-grid { background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; }
+        input[type='range']::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #22c55e;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+        }
+    </style>
+</head>
+<body class="bg-zinc-900 text-white font-sans min-h-screen flex flex-col overflow-hidden">
+
+    <!-- 標題列 -->
+    <header class="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 z-10">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-black">
+                <i data-lucide="camera" size="20"></i>
+            </div>
+            <h1 class="text-lg font-bold tracking-tight">綠幕美拍大師 <span class="text-xs font-normal text-zinc-500 ml-2">v2.0 jQuery</span></h1>
+        </div>
+        <div id="status-indicator" class="flex items-center gap-2 text-xs text-green-500">
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            系統就緒
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <!-- 左側：預覽區 -->
+        <div class="flex-[3] bg-black relative flex items-center justify-center p-4 bg-grid">
+            
+            <!-- 相機畫面 -->
+            <div id="step-camera" class="relative w-full h-full flex items-center justify-center overflow-hidden rounded-2xl shadow-2xl border border-zinc-800">
+                <video id="video" autoplay playsinline class="w-full h-full object-cover mirror"></video>
+                <div class="absolute inset-0 border-2 border-white/10 pointer-events-none rounded-2xl"></div>
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div class="w-64 h-80 border-2 border-dashed border-green-400/30 rounded-full"></div>
+                </div>
+            </div>
+
+            <!-- 編輯畫面 (Canvas) -->
+            <div id="step-editor" class="hidden relative w-full h-full flex items-center justify-center p-4">
+                <canvas id="mainCanvas" class="max-w-full max-h-full shadow-2xl rounded-lg bg-zinc-800"></canvas>
+            </div>
+        </div>
+
+        <!-- 右側：控制區 -->
+        <div class="flex-1 bg-zinc-900 border-l border-zinc-800 p-6 flex flex-col gap-6 overflow-y-auto">
+            
+            <!-- 相機控制 -->
+            <div id="controls-camera" class="flex flex-col h-full justify-center gap-8 text-center">
+                <div>
+                    <h2 class="text-xl font-semibold mb-2 text-green-400">遊客就位</h2>
+                    <p class="text-zinc-400 text-sm leading-relaxed">請確保遊客站在綠幕中心<br>避免穿著綠色衣物</p>
+                </div>
+                <button id="btn-capture" class="mx-auto w-24 h-24 bg-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-xl border-8 border-zinc-700">
+                    <div class="w-16 h-16 bg-red-500 rounded-full"></div>
+                </button>
+                <div class="flex justify-center gap-4">
+                    <button id="btn-switch-cam" class="p-4 bg-zinc-800 rounded-full hover:bg-zinc-700 text-zinc-300">
+                        <i data-lucide="refresh-cw"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 編輯控制 -->
+            <div id="controls-editor" class="hidden flex flex-col gap-6">
+                <section>
+                    <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3 flex items-center gap-2">
+                        <i data-lucide="maximize" class="w-4 h-4"></i> 照片比例
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button data-ratio="1:1" class="ratio-btn py-3 rounded-lg border-2 border-zinc-800 bg-zinc-800/50 text-zinc-400 transition-all">1 : 1</button>
+                        <button data-ratio="4:3" class="ratio-btn py-3 rounded-lg border-2 border-green-500 bg-green-500/10 text-white transition-all">4 : 3</button>
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3 flex items-center gap-2">
+                        <i data-lucide="image" class="w-4 h-4"></i> 選擇背景
+                    </h3>
+                    <div id="bg-list" class="grid grid-cols-2 gap-3">
+                        <!-- 背景將由 JS 生成 -->
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3 flex items-center gap-2">
+                        <i data-lucide="layers" class="w-4 h-4"></i> 去背靈敏度
+                    </h3>
+                    <div class="space-y-4 bg-zinc-800/40 p-4 rounded-xl border border-zinc-800">
+                        <div class="flex justify-between text-[10px] text-zinc-400 mb-1">
+                            <span>低 (保留較多)</span>
+                            <span id="similarity-val" class="text-green-400 font-bold">80</span>
+                            <span>高 (去得更乾淨)</span>
+                        </div>
+                        <input id="range-similarity" type="range" min="30" max="180" value="80" class="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none">
+                    </div>
+                </section>
+
+                <div class="mt-4 flex flex-col gap-3">
+                    <button id="btn-download" class="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95">
+                        <i data-lucide="download"></i> 完成並下載圖片
+                    </button>
+                    <button id="btn-retake" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 rounded-xl transition-colors">
+                        重新拍攝
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 隱藏的工具畫布 -->
+    <canvas id="tempCanvas" class="hidden"></canvas>
+
+    <script>
+        const BACKGROUNDS = [
+            { id: 1, name: '簡約室內', url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80' },
+            { id: 2, name: '熱帶海灘', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80' },
+            { id: 3, name: '科技城市', url: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=800&q=80' },
+            { id: 4, name: '森林秘境', url: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80' },
+        ];
+
+        let currentStep = 'camera';
+        let currentRatio = '4:3';
+        let currentBgIdx = 0;
+        let capturedImgData = null;
+        let videoStream = null;
+        let similarity = 80;
+
+        $(document).ready(function() {
+            lucide.createIcons();
+            initBackgrounds();
+            startCamera();
+
+            // 拍照按鈕
+            $('#btn-capture').on('click', takePhoto);
+
+            // 比例切換
+            $('.ratio-btn').on('click', function() {
+                $('.ratio-btn').removeClass('border-green-500 bg-green-500/10 text-white').addClass('border-zinc-800 bg-zinc-800/50 text-zinc-400');
+                $(this).addClass('border-green-500 bg-green-500/10 text-white').removeClass('border-zinc-800 bg-zinc-800/50 text-zinc-400');
+                currentRatio = $(this).data('ratio');
+                renderComposite();
+            });
+
+            // 靈敏度調整
+            $('#range-similarity').on('input', function() {
+                similarity = parseInt($(this).val());
+                $('#similarity-val').text(similarity);
+                renderComposite();
+            });
+
+            // 下載
+            $('#btn-download').on('click', downloadPhoto);
+
+            // 重拍
+            $('#btn-retake').on('click', () => {
+                switchStep('camera');
+                startCamera();
+            });
+        });
+
+        function initBackgrounds() {
+            const container = $('#bg-list');
+            BACKGROUNDS.forEach((bg, index) => {
+                const activeClass = index === 0 ? 'border-green-500 ring-2 ring-green-500/20' : 'border-transparent';
+                const html = `
+                    <button class="bg-item relative aspect-video rounded-lg overflow-hidden border-2 transition-all ${activeClass}" data-idx="${index}">
+                        <img src="${bg.url}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black/40 flex items-end p-2">
+                            <span class="text-[10px] font-medium">${bg.name}</span>
+                        </div>
+                    </button>
+                `;
+                container.append(html);
+            });
+
+            $('.bg-item').on('click', function() {
+                $('.bg-item').removeClass('border-green-500 ring-2 ring-green-500/20').addClass('border-transparent');
+                $(this).addClass('border-green-500 ring-2 ring-green-500/20').removeClass('border-transparent');
+                currentBgIdx = $(this).data('idx');
+                renderComposite();
+            });
+        }
+
+        async function startCamera() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                $('#video')[0].srcObject = videoStream;
+            } catch (err) {
+                alert("無法開啟相機，請檢查權限設定");
+            }
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function takePhoto() {
+            const video = $('#video')[0];
+            const canvas = $('#tempCanvas')[0];
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // 處理水平翻轉(因為預覽是鏡像)
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+            
+            capturedImgData = canvas.toDataURL('image/png');
+            stopCamera();
+            switchStep('editor');
+            renderComposite();
+        }
+
+        function switchStep(step) {
+            currentStep = step;
+            if (step === 'camera') {
+                $('#step-camera, #controls-camera').show();
+                $('#step-editor, #controls-editor').hide();
+            } else {
+                $('#step-camera, #controls-camera').hide();
+                $('#step-editor, #controls-editor').show();
+            }
+        }
+
+        // 核心去背演算法
+        function applyChromaKey(ctx, w, h) {
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            
+            // 目標綠色 (稍微偏鮮綠)
+            const target = { r: 80, g: 190, b: 100 };
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+
+                const diff = Math.sqrt(
+                    Math.pow(r - target.r, 2) +
+                    Math.pow(g - target.g, 2) +
+                    Math.pow(b - target.b, 2)
+                );
+
+                if (diff < similarity) {
+                    data[i + 3] = 0;
+                } else if (diff < similarity + 20) {
+                    data[i + 3] = ((diff - similarity) / 20) * 255;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        function renderComposite() {
+            const canvas = $('#mainCanvas')[0];
+            const ctx = canvas.getContext('2d');
+            
+            const bgImg = new Image();
+            const personImg = new Image();
+            bgImg.crossOrigin = "anonymous";
+            
+            bgImg.onload = () => {
+                // 設定畫布尺寸
+                const targetW = 1200;
+                const targetH = currentRatio === '1:1' ? 1200 : 900;
+                canvas.width = targetW;
+                canvas.height = targetH;
+
+                // 1. 繪製背景
+                const bgRatio = bgImg.width / bgImg.height;
+                const targetRatio = targetW / targetH;
+                let bw, bh, bx, by;
+                if (bgRatio > targetRatio) {
+                    bh = targetH; bw = bgImg.width * (targetH / bgImg.height);
+                    bx = (targetW - bw) / 2; by = 0;
+                } else {
+                    bw = targetW; bh = bgImg.height * (targetW / bgImg.width);
+                    bx = 0; by = (targetH - bh) / 2;
+                }
+                ctx.drawImage(bgImg, bx, by, bw, bh);
+
+                // 2. 處理去背
+                personImg.onload = () => {
+                    const tCanvas = document.createElement('canvas');
+                    tCanvas.width = personImg.width;
+                    tCanvas.height = personImg.height;
+                    const tCtx = tCanvas.getContext('2d');
+                    tCtx.drawImage(personImg, 0, 0);
+                    applyChromaKey(tCtx, tCanvas.width, tCanvas.height);
+
+                    // 3. 合成人物
+                    const pRatio = tCanvas.width / tCanvas.height;
+                    let pw, ph, px, py;
+                    if (pRatio > targetRatio) {
+                        ph = targetH; pw = tCanvas.width * (targetH / tCanvas.height);
+                    } else {
+                        pw = targetW; ph = tCanvas.height * (targetW / tCanvas.width);
+                    }
+                    px = (targetW - pw) / 2; py = (targetH - ph) / 2;
+                    ctx.drawImage(tCanvas, px, py, pw, ph);
+                };
+                personImg.src = capturedImgData;
+            };
+            bgImg.src = BACKGROUNDS[currentBgIdx].url;
+        }
+
+        function downloadPhoto() {
+            const canvas = $('#mainCanvas')[0];
+            const link = document.createElement('a');
+            link.download = `GreenScreenStudio_${Date.now()}.jpg`;
+            link.href = canvas.toDataURL('image/jpeg', 0.9);
+            link.click();
+        }
+    </script>
+</body>
+</html>
