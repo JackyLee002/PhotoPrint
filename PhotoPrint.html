@@ -8,14 +8,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        :root { --app-height: 100%; }
+        /* 修正 RWD 捲動問題 */
         html, body { 
-            height: 100%; 
+            min-height: 100%; 
             margin: 0; 
             padding: 0; 
-            overflow-x: hidden;
             background-color: #18181b;
+            /* 允許捲動，解決切掉的問題 */
+            overflow-y: auto;
+            overflow-x: hidden;
         }
+        
         /* 鏡像翻轉樣式 */
         .mirror-view { transform: scaleX(-1); }
         
@@ -24,15 +27,21 @@
             background-size: 20px 20px; 
         }
         
-        /* 自定義捲軸 */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #18181b; }
-        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        /* 手機版頂部固定預覽區域的高度 */
+        @media (max-width: 767px) {
+            .preview-container {
+                height: 50vh;
+                position: sticky;
+                top: 56px; /* Header height */
+                z-index: 10;
+                background: black;
+            }
+        }
 
         input[type='range']::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             background: #22c55e;
             border-radius: 50%;
             cursor: pointer;
@@ -43,12 +52,12 @@
 <body class="text-white font-sans flex flex-col">
 
     <!-- 標題列 -->
-    <header class="p-3 md:p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 shrink-0 sticky top-0 z-20">
+    <header class="h-14 p-3 md:p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900 shrink-0 sticky top-0 z-30">
         <div class="flex items-center gap-2">
             <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-black">
                 <i data-lucide="camera" class="w-5 h-5"></i>
             </div>
-            <h1 class="text-base md:text-lg font-bold tracking-tight">綠幕美拍大師 <span class="hidden sm:inline text-xs font-normal text-zinc-500 ml-2">v3.0 RWD</span></h1>
+            <h1 class="text-base md:text-lg font-bold tracking-tight">綠幕美拍大師 <span class="hidden sm:inline text-xs font-normal text-zinc-500 ml-2">v3.1 Fix</span></h1>
         </div>
         <div id="status-indicator" class="flex items-center gap-2 text-[10px] md:text-xs text-green-500">
             <span class="relative flex h-2 w-2">
@@ -59,9 +68,9 @@
         </div>
     </header>
 
-    <main class="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+    <main class="flex-1 flex flex-col md:flex-row">
         <!-- 左側/上方：預覽區 -->
-        <div class="relative flex-[2] lg:flex-[3] bg-black bg-grid flex items-center justify-center min-h-[40vh] md:min-h-0">
+        <div class="preview-container relative flex-[2] lg:flex-[3] bg-black bg-grid flex items-center justify-center min-h-[45vh] md:min-h-0 md:h-[calc(100vh-56px)] md:sticky md:top-14">
             
             <!-- 相機畫面 -->
             <div id="step-camera" class="relative w-full h-full flex items-center justify-center">
@@ -71,7 +80,7 @@
                     <div class="w-1/2 h-2/3 border-2 border-dashed border-green-500/30 rounded-[50px]"></div>
                 </div>
                 <!-- 輔助按鈕：水平翻轉切換 -->
-                <button id="btn-toggle-mirror" class="absolute bottom-4 left-4 bg-black/50 backdrop-blur-md p-2 rounded-lg border border-white/20 text-xs flex items-center gap-2">
+                <button id="btn-toggle-mirror" class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-2 rounded-lg border border-white/20 text-xs flex items-center gap-2 active:bg-zinc-700">
                     <i data-lucide="flip-horizontal" class="w-4 h-4"></i> 水平翻轉
                 </button>
             </div>
@@ -83,21 +92,21 @@
         </div>
 
         <!-- 右側/下方：控制區 -->
-        <div class="flex-1 bg-zinc-900 border-t md:border-t-0 md:border-l border-zinc-800 flex flex-col overflow-y-auto">
+        <div class="flex-1 bg-zinc-900 border-t md:border-t-0 md:border-l border-zinc-800">
             
             <!-- 相機控制面版 -->
-            <div id="controls-camera" class="p-6 flex flex-col items-center justify-center gap-6 h-full min-h-[300px]">
+            <div id="controls-camera" class="p-6 flex flex-col items-center justify-center gap-8 min-h-[300px] md:min-h-[calc(100vh-56px)]">
                 <div class="text-center">
                     <h2 class="text-lg font-semibold mb-1 text-green-400">遊客就位拍攝</h2>
-                    <p class="text-zinc-400 text-xs">請確保遊客在綠幕前方，且環境光線充足</p>
+                    <p class="text-zinc-400 text-xs leading-relaxed">請確保遊客在綠幕前方<br>並確認畫面方向是否正確</p>
                 </div>
                 
-                <button id="btn-capture" class="group relative w-20 h-20 md:w-24 md:h-24 bg-white rounded-full flex items-center justify-center shadow-xl border-4 md:border-8 border-zinc-700 active:scale-90 transition-transform">
-                    <div class="w-14 h-14 md:w-16 md:h-16 bg-red-500 rounded-full group-hover:bg-red-600 transition-colors"></div>
+                <button id="btn-capture" class="group relative w-20 h-20 md:w-28 md:h-28 bg-white rounded-full flex items-center justify-center shadow-2xl border-4 md:border-8 border-zinc-700 active:scale-90 transition-transform">
+                    <div class="w-14 h-14 md:w-20 md:h-20 bg-red-500 rounded-full group-hover:bg-red-600 transition-colors"></div>
                 </button>
                 
                 <div class="flex gap-4">
-                    <button id="btn-switch-cam" class="flex flex-col items-center gap-1 p-3 bg-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-colors">
+                    <button id="btn-switch-cam" class="flex flex-col items-center gap-1 p-3 bg-zinc-800 rounded-xl text-zinc-400 hover:text-white transition-colors w-24">
                         <i data-lucide="refresh-ccw" class="w-5 h-5"></i>
                         <span class="text-[10px]">切換鏡頭</span>
                     </button>
@@ -105,46 +114,46 @@
             </div>
 
             <!-- 編輯控制面版 -->
-            <div id="controls-editor" class="hidden p-4 md:p-6 space-y-6 pb-20 md:pb-6">
+            <div id="controls-editor" class="hidden p-5 md:p-8 space-y-8 pb-12">
                 <section>
-                    <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3 flex items-center gap-2">
-                        <i data-lucide="maximize-2" class="w-4 h-4"></i> 調整照片比例
+                    <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-4 flex items-center gap-2">
+                        <i data-lucide="maximize-2" class="w-4 h-4"></i> 1. 照片比例
                     </h3>
-                    <div class="grid grid-cols-2 gap-2 text-sm">
-                        <button data-ratio="1:1" class="ratio-btn py-3 rounded-xl border-2 border-zinc-800 bg-zinc-800/50 text-zinc-400">1 : 1</button>
-                        <button data-ratio="4:3" class="ratio-btn py-3 rounded-xl border-2 border-green-500 bg-green-500/10 text-white font-bold">4 : 3</button>
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <button data-ratio="1:1" class="ratio-btn py-4 rounded-xl border-2 border-zinc-800 bg-zinc-800/50 text-zinc-400">1 : 1</button>
+                        <button data-ratio="4:3" class="ratio-btn py-4 rounded-xl border-2 border-green-500 bg-green-500/10 text-white font-bold">4 : 3</button>
                     </div>
                 </section>
 
                 <section>
-                    <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3 flex items-center gap-2">
-                        <i data-lucide="image" class="w-4 h-4"></i> 選擇背景
+                    <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-4 flex items-center gap-2">
+                        <i data-lucide="image" class="w-4 h-4"></i> 2. 選擇背景
                     </h3>
-                    <div id="bg-list" class="grid grid-cols-2 gap-2">
+                    <div id="bg-list" class="grid grid-cols-2 gap-3">
                         <!-- 由 JS 生成 -->
                     </div>
                 </section>
 
                 <section>
-                    <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-3 flex items-center gap-2">
-                        <i data-lucide="wand-2" class="w-4 h-4"></i> 去背靈敏度微調
+                    <h3 class="text-xs uppercase tracking-widest text-zinc-500 font-bold mb-4 flex items-center gap-2">
+                        <i data-lucide="wand-2" class="w-4 h-4"></i> 3. 去背微調
                     </h3>
-                    <div class="bg-zinc-800/50 p-4 rounded-xl border border-zinc-700/50">
-                        <div class="flex justify-between text-[10px] text-zinc-500 mb-2">
-                            <span>寬鬆</span>
-                            <span id="similarity-val" class="text-green-400 font-bold">85</span>
-                            <span>嚴格</span>
+                    <div class="bg-zinc-800/50 p-5 rounded-2xl border border-zinc-700/50">
+                        <div class="flex justify-between text-[11px] text-zinc-500 mb-3">
+                            <span>寬鬆 (保留較多)</span>
+                            <span id="similarity-val" class="text-green-400 font-bold text-sm">85</span>
+                            <span>嚴格 (去除較多)</span>
                         </div>
-                        <input id="range-similarity" type="range" min="30" max="180" value="85" class="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
+                        <input id="range-similarity" type="range" min="30" max="180" value="85" class="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
                     </div>
                 </section>
 
-                <div class="grid grid-cols-1 gap-3 pt-2">
-                    <button id="btn-download" class="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
-                        <i data-lucide="download"></i> 儲存並產出照片
+                <div class="flex flex-col gap-4 pt-4 pb-10">
+                    <button id="btn-download" class="w-full bg-green-500 hover:bg-green-400 text-black font-bold py-5 rounded-2xl flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all text-lg">
+                        <i data-lucide="download"></i> 下載最終照片
                     </button>
-                    <button id="btn-retake" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-3 rounded-xl transition-colors">
-                        重新拍攝
+                    <button id="btn-retake" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-4 rounded-2xl transition-colors">
+                        回上一頁重新拍攝
                     </button>
                 </div>
             </div>
@@ -169,7 +178,8 @@
             capturedBlob: null,
             isMirrored: false,
             similarity: 85,
-            videoStream: null
+            videoStream: null,
+            facingMode: 'environment'
         };
 
         $(document).ready(function() {
@@ -206,13 +216,13 @@
             $('#btn-download').on('click', savePhoto);
             $('#btn-retake').on('click', () => {
                 switchStep('camera');
-                startCamera();
+                startCamera(state.facingMode);
             });
 
-            // 切換鏡頭 (如果支援)
+            // 切換鏡頭
             $('#btn-switch-cam').on('click', () => {
-                const currentMode = state.facingMode === 'user' ? 'environment' : 'user';
-                startCamera(currentMode);
+                const nextMode = state.facingMode === 'user' ? 'environment' : 'user';
+                startCamera(nextMode);
             });
         });
 
@@ -223,8 +233,8 @@
                 $list.append(`
                     <button class="bg-item relative aspect-video rounded-xl overflow-hidden border-2 transition-all ${active}" data-idx="${i}">
                         <img src="${bg.url}" class="w-full h-full object-cover">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-2">
-                            <span class="text-[10px] truncate">${bg.name}</span>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-end p-2">
+                            <span class="text-[10px] truncate font-medium">${bg.name}</span>
                         </div>
                     </button>
                 `);
@@ -251,13 +261,17 @@
                 $('#video')[0].srcObject = state.videoStream;
             } catch (err) {
                 console.error("Camera Error:", err);
-                alert("無法存取相機，請確認瀏覽器權限。");
+                alert("無法開啟相機，請檢查瀏覽器設定中的相機權限。");
             }
         }
 
         function takePhoto() {
             const video = $('#video')[0];
             const canvas = $('#tempCanvas')[0];
+            
+            // 確保影片已經加載
+            if (video.videoWidth === 0) return;
+            
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
@@ -270,9 +284,16 @@
             ctx.drawImage(video, 0, 0);
             
             state.capturedBlob = canvas.toDataURL('image/png');
-            state.videoStream.getTracks().forEach(t => t.stop());
+            // 暫停相機省電
+            if (state.videoStream) {
+                state.videoStream.getTracks().forEach(t => t.stop());
+            }
+            
             switchStep('editor');
             renderComposite();
+            
+            // 移動端拍照後自動捲動到編輯區頂部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function switchStep(step) {
@@ -286,7 +307,6 @@
             }
         }
 
-        // 綠幕去背演算法
         function applyChromaKey(ctx, w, h) {
             const imgData = ctx.getImageData(0, 0, w, h);
             const data = imgData.data;
@@ -294,7 +314,6 @@
 
             for (let i = 0; i < data.length; i += 4) {
                 const r = data[i], g = data[i+1], b = data[i+2];
-                // 計算色差 (歐幾里得距離)
                 const diff = Math.sqrt(
                     Math.pow(r - target.r, 2) + 
                     Math.pow(g - target.g, 2) + 
@@ -302,9 +321,9 @@
                 );
 
                 if (diff < state.similarity) {
-                    data[i + 3] = 0; // 完全透明
+                    data[i + 3] = 0;
                 } else if (diff < state.similarity + 15) {
-                    data[i + 3] = ((diff - state.similarity) / 15) * 255; // 邊緣羽化
+                    data[i + 3] = ((diff - state.similarity) / 15) * 255;
                 }
             }
             ctx.putImageData(imgData, 0, 0);
@@ -320,13 +339,11 @@
             bgImg.src = BACKGROUNDS[state.bgIdx].url;
 
             bgImg.onload = () => {
-                // 設定畫布尺寸 (根據比例)
                 const baseWidth = 1200;
                 const baseHeight = state.ratio === '1:1' ? 1200 : 900;
                 canvas.width = baseWidth;
                 canvas.height = baseHeight;
 
-                // 1. 繪製背景 (Cover 模式)
                 const bgRatio = bgImg.width / bgImg.height;
                 const targetRatio = baseWidth / baseHeight;
                 let bw, bh, bx, by;
@@ -339,7 +356,6 @@
                 }
                 ctx.drawImage(bgImg, bx, by, bw, bh);
 
-                // 2. 處理人物去背與合成
                 personImg.onload = () => {
                     const tCanvas = document.createElement('canvas');
                     tCanvas.width = personImg.width;
@@ -348,7 +364,6 @@
                     tCtx.drawImage(personImg, 0, 0);
                     applyChromaKey(tCtx, tCanvas.width, tCanvas.height);
 
-                    // 3. 繪製人物到主畫布 (Contain 模式，並確保人物置中)
                     const pRatio = tCanvas.width / tCanvas.height;
                     let pw, ph, px, py;
                     if (pRatio > targetRatio) {
